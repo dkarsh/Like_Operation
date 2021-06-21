@@ -86,7 +86,7 @@ class LikeOperation : AsynchronousOperation {
         print("Operation \(self.id) - \(txt) - API call sent")
         let secondsToDelay = 1.0
         DispatchQueue.main.asyncAfter(deadline: .now() + secondsToDelay) {
-            print("Operation \(self.id) - \(txt) - API call respond")
+            print("Operation \(self.id) - \(txt) - API call response")
             self.finish()
         }
     }
