@@ -2,74 +2,47 @@ import SwiftUI
 import PlaygroundSupport
 import Foundation
 
-open class AsynchronousOperation: Operation {
-    public override var isAsynchronous: Bool {
-        return false
+public enum OperationState: Int {
+    case ready
+    case executing
+    case finished
+}
+
+
+open class TSUOperation: Operation {
+    
+    public var state: OperationState = .ready {
+        willSet {
+            self.willChangeValue(forKey: "isExecuting")
+            self.willChangeValue(forKey: "isFinished")
+        }
+        
+        didSet {
+            self.didChangeValue(forKey: "isExecuting")
+            self.didChangeValue(forKey: "isFinished")
+        }
     }
     
-    public override var isExecuting: Bool {
+    open override var isExecuting: Bool {
         return state == .executing
     }
     
-    public override var isFinished: Bool {
+    open override var isFinished: Bool {
         return state == .finished
     }
     
-    public override func start() {
-        if self.isCancelled {
-            state = .finished
-        } else {
-            state = .ready
-            main()
-        }
+    open override var isReady: Bool {
+        return state == .ready
     }
     
-    open override func main() {
-        if self.isCancelled {
-            state = .finished
-        } else {
-            state = .executing
-        }
+    open override var isAsynchronous: Bool {
+        return true
     }
     
-    public func finish() {
-        state = .finished
-    }
-    
-    // MARK: - State management
-    
-    public enum State: String {
-        case ready = "Ready"
-        case executing = "Executing"
-        case finished = "Finished"
-        fileprivate var keyPath: String { return "is" + self.rawValue }
-    }
-    
-    /// Thread-safe computed state value
-    public var state: State {
-        get {
-            stateQueue.sync {
-                return stateStore
-            }
-        }
-        set {
-            let oldValue = state
-            willChangeValue(forKey: state.keyPath)
-            willChangeValue(forKey: newValue.keyPath)
-            stateQueue.sync(flags: .barrier) {
-                stateStore = newValue
-            }
-            didChangeValue(forKey: state.keyPath)
-            didChangeValue(forKey: oldValue.keyPath)
-        }
-    }
-    
-    private let stateQueue = DispatchQueue(label: "AsynchronousOperation State Queue", attributes: .concurrent)
-    /// Non thread-safe state storage, use only with locks
-    private var stateStore: State = .ready
 }
 
-class LikeOperation : AsynchronousOperation {
+
+class LikeOperation : TSUOperation {
     
     let like:Bool
     let id:Int
@@ -80,21 +53,29 @@ class LikeOperation : AsynchronousOperation {
         super.init()
     }
     
-    override func main() {
-        super.main()
+    override func start() {
+        if isCancelled {
+            state = .finished
+            return
+        }
         let txt = like ? "Like" : "Dislike"
         print("Operation \(self.id) - \(txt) - API call sent")
         let secondsToDelay = 1.0
         DispatchQueue.main.asyncAfter(deadline: .now() + secondsToDelay) {
             print("Operation \(self.id) - \(txt) - API call response")
-            self.finish()
+            self.state = .finished
         }
     }
 }
 
+var queue: OperationQueue = {
+    let queue = OperationQueue()
+    queue.maxConcurrentOperationCount = 1
+    return queue
+}()
+
 struct ContentView: View {
     @State private var showDetails = false
-    let queue = OperationQueue()
     @State var index = 1
     
     var body: some View {
@@ -105,6 +86,7 @@ struct ContentView: View {
                 
                 let operation = LikeOperation(!index.isMultiple(of: 2), id:index)
                 var lastAPICall: Bool?
+                
                 
                 if let last = queue.operations.last{
                     queue.isSuspended = true
