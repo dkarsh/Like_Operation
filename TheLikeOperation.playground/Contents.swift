@@ -58,7 +58,7 @@ class LikeOperation : TSUOperation {
             state = .finished
             return
         }
-        let txt = like ? "Like" : "Dislike"
+        let txt = like ? "Like" : "Unlike"
         print("Operation \(self.id) - \(txt) - API call sent")
         let secondsToDelay = 1.0
         DispatchQueue.main.asyncAfter(deadline: .now() + secondsToDelay) {
@@ -80,7 +80,7 @@ struct ContentView: View {
     
     var body: some View {
         VStack(alignment: .leading) {
-            Button(!index.isMultiple(of: 2) ? "   Like   " : " Dislike ") {
+            Button(!index.isMultiple(of: 2) ? "   Like   " : " Unlike ") {
                 
                 print ("tapped \(index) times")
                 
